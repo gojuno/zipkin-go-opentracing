@@ -187,7 +187,6 @@ func (c *HTTPCollector) flush(b []*zipkincore.Span) (err error) {
 
 	data, err := httpSerialize(b)
 	if err != nil {
-		c.logger.Log("err", err)
 		return err
 	}
 
