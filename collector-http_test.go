@@ -166,20 +166,23 @@ func TestHttpCollector_NonBlockCollect(t *testing.T) {
 	port := 10003
 	newHTTPServer(t, port)
 
-	c, err := NewHTTPCollector(fmt.Sprintf("http://localhost:%d/api/v1/sleep", port))
+	c, err := NewHTTPCollector(fmt.Sprintf("http://localhost:%d/api/v1/sleep", port), HTTPBatchSize(1))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	start := time.Now()
-	if err := c.Collect(&zipkincore.Span{}); err != nil {
-		t.Errorf("error during collection: %v", err)
+
+	for i := 0; i < 10; i++ {
+		// cause batchSize is set to 1 it means that every collected span triggers http request
+		if err := c.Collect(&zipkincore.Span{}); err != nil {
+			t.Errorf("error during collection: %v", err)
+		}
 	}
 
 	if time.Now().Sub(start) >= serverSleep {
 		t.Fatal("Collect is blocking")
 	}
-
 }
 
 type httpServer struct {

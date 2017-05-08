@@ -160,7 +160,6 @@ func (c *HTTPCollector) loop() {
 			}
 		case <-c.quit:
 			c.shutdown <- c.flush(b)
-
 			return
 		}
 	}
