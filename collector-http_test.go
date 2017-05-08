@@ -166,52 +166,23 @@ func TestHttpCollector_NonBlockCollect(t *testing.T) {
 	port := 10003
 	newHTTPServer(t, port)
 
-	c, err := NewHTTPCollector(fmt.Sprintf("http://localhost:%d/api/v1/sleep", port))
+	c, err := NewHTTPCollector(fmt.Sprintf("http://localhost:%d/api/v1/sleep", port), HTTPBatchSize(1))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	start := time.Now()
-	if err := c.Collect(&zipkincore.Span{}); err != nil {
-		t.Errorf("error during collection: %v", err)
+
+	for i := 0; i < 10; i++ {
+		// cause batchSize is set to 1 it means that every collected span triggers http request
+		if err := c.Collect(&zipkincore.Span{}); err != nil {
+			t.Errorf("error during collection: %v", err)
+		}
 	}
 
 	if time.Now().Sub(start) >= serverSleep {
 		t.Fatal("Collect is blocking")
 	}
-
-}
-
-func TestHttpCollector_MaxBatchSize(t *testing.T) {
-	t.Parallel()
-
-	port := 10004
-	server := newHTTPServer(t, port)
-
-	var (
-		maxBacklog = 5
-		batchSize  = maxBacklog * 2 // make backsize bigger than backlog enable testing backlog disposal
-	)
-
-	c, err := NewHTTPCollector(fmt.Sprintf("http://localhost:%d/api/v1/span", port),
-		HTTPMaxBacklog(maxBacklog),
-		HTTPBatchSize(batchSize),
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	for i := 0; i < batchSize; i++ {
-		c.Collect(makeNewSpan("", "", "", 0, int64(i), 0, false))
-	}
-	c.Close()
-
-	for i, s := range server.spans() {
-		if want, have := int64(i+maxBacklog), s.ID; want != have {
-			t.Errorf("Span ID is wrong. want %d, have %d", want, have)
-		}
-	}
-
 }
 
 type httpServer struct {
